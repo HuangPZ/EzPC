@@ -18,3 +18,5 @@ SEAL
 *.csv
 *.out
 GPU-MPC/experiments/sigma/sigma_offline_online
+GPU-MPC/build
+tmpdir/

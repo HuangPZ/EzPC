@@ -1,0 +1,37 @@
+#!/bin/bash
+#SBATCH -J cutclass
+#SBATCH --mail-type=END                      # Request status by email #SBATCH --partition=suh #SBATCH --constraint="gpu-mid|gpu-high" #SBATCH --exclude=fang-compute-01,fang-compute-02
+#SBATCH --mail-user=ph448@cornell.edu        # Email address to send results to.#SBATCH --partition=suh #SBATCH --partition=suh  #SBATCH --exclude=rush-compute-03,dgx2-compute-02,davis-compute-02,brandal,abdelfattah-compute-02,lancer-compute-01,sun-compute-03,snavely-compute-03,seo-compute-01,seo-compute-02
+#SBATCH -o ./slurm-%j.out
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --tasks-per-node=1
+#SBATCH --get-user-env
+#SBATCH --mem 300G
+#SBATCH -t 24:00:00
+#SBATCH --gres=gpu:4
+#SBATCH --requeue
+#SBATCH --constraint="[a6000|a5500|3090]"
+#SBATCH --partition=suh
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+export WORLD_SIZE=4
+source /home/ph448/.bashrc
+conda activate sigma
+echo $SLURMD_NODENAME
+
+# cd /share/suh-scrap2/ph448/cutlass/build
+export CUDA_HOME=$CONDA_PREFIX
+export PATH=$CUDA_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+
+# make -j$(nproc)
+# /share/suh-scrap2/ph448/cutlass/tools/test/unit/cutlass_test
+# make test_unit -j
+export CUDA_VERSION=11.7
+export GPU_ARCH=86
+
+cd /share/suh-scrap2/ph448/EzPC/GPU-MPC
+sh setup.sh main
+make sigma
+conda install matplotlib

@@ -1,72 +1,66 @@
+mkdir -p /share/suh-scrap2/ph448/EzPC/tmpdir
+export TMPDIR=/share/suh-scrap2/ph448/EzPC/tmpdir
+
 # Set environment variables
-export NVCC_PATH="/usr/local/cuda-$CUDA_VERSION/bin/nvcc"
+export NVCC_PATH="$CONDA_PREFIX/bin/nvcc"
+export CUDA_VERSION=11.7  # Update based on your CUDA version
+export GPU_ARCH=86        # Update based on your GPU architecture
 
-echo "Updating submodules"
-git submodule update --init --recursive
+# # echo "Updating submodules"
+# git submodule update --init --recursive
 
-# Install dependencies
-echo "Installing g++-9"
-sudo apt install -y gcc-9 g++-9;
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 60 --slave /usr/bin/g++ g++ /usr/bin/g++-9;
-sudo update-alternatives --config gcc;
+# # # Install dependencies via Conda
+# echo "Installing g++-9"
+# conda install -c conda-forge gxx_linux-64=9
 
+# # echo "Installing other dependencies"
+# conda install -c conda-forge gmp openssl cmake=3.27 gmp mpfr eigen
 
-#installing dependencies
-sudo apt install libssl-dev cmake python3-pip libgmp-dev libmpfr-dev;
+# # # Install Python dependencies via Conda
+# # conda install -c conda-forge python=3.8 pip
+# # conda install -c conda-forge matplotlib
 
+# # Install CUTLASS
+# echo "Building CUTLASS"
+# cd ext/cutlass
+# git stash
+# if [ -n "$1" ]; then 
+#     git checkout $1
+# fi
+# mkdir -p build && cd build
+# cmake .. -DCUTLASS_NVCC_ARCHS=$GPU_ARCH -DCMAKE_CUDA_COMPILER_WORKS=1 -DCMAKE_CUDA_COMPILER=$NVCC_PATH -DCMAKE_CUDA_ARCHITECTURES=86
+# ranlib /share/suh-scrap2/ph448/EzPC/GPU-MPC/ext/cutlass/build/lib/libgtest.a 
+# make -j
+# cd ../../..
 
-echo "Installing dependencies"
-sudo apt install cmake make libeigen3-dev;
+# # Build Sytorch
+# echo "Building Sytorch"
+# cd ext/sytorch
+# mkdir -p build && cd build
+# cmake -DCMAKE_INSTALL_PREFIX=./install -DCMAKE_BUILD_TYPE=Release ../ -DCUDAToolkit_ROOT="$CONDA_PREFIX"
+# make sytorch -j
+# cd ../../..
 
-echo "Building CUTLASS"
-# Build CUTLASS
-cd ext/cutlass;
-if [ -n "$1" ]
-then 
-git checkout $1;
-fi
-mkdir build && cd build;
-cmake .. -DCUTLASS_NVCC_ARCHS=$GPU_ARCH -DCMAKE_CUDA_COMPILER_WORKS=1 -DCMAKE_CUDA_COMPILER=$NVCC_PATH;
-make -j;
-cd ../../..;
-
-# Build sytorch
-echo "Building Sytorch"
-cd ext/sytorch;
-mkdir build && cd build;
-cmake -DCMAKE_INSTALL_PREFIX=./install -DCMAKE_BUILD_TYPE=Release ../ -DCUDAToolkit_ROOT="/usr/local/cuda-$CUDA_VERSION/bin/";
-make sytorch -j;
-cd ../../..;
-
-# Download CIFAR-10
-cd experiments/orca/datasets/cifar-10;
-sh download-cifar10.sh;
-cd ../../../..;
-
+# # Download CIFAR-10 dataset
+# cd experiments/orca/datasets/cifar-10
+# sh download-cifar10.sh
+# cd ../../../..
 
 # Make shares of data
-make share_data;
-cd experiments/orca;
-./share_data;
-cd ../..;
+make share_data
+cd experiments/orca
+./share_data
+cd ../..
 
-# Build the orca codebase
-# make orca; 
 
-# Make output directories
-# Orca
-mkdir experiments/orca/output;
-mkdir experiments/orca/output/P0;
-mkdir experiments/orca/output/P1;
-mkdir experiments/orca/output/P0/training;
-mkdir experiments/orca/output/P1/training;
-mkdir experiments/orca/output/P0/inference;
-mkdir experiments/orca/output/P1/inference;
+# Set up output directories
+echo "Setting up output directories"
+mkdir -p experiments/orca/output/P0/training
+mkdir -p experiments/orca/output/P1/training
+mkdir -p experiments/orca/output/P0/inference
+mkdir -p experiments/orca/output/P1/inference
+mkdir -p experiments/sigma/output/P0
+mkdir -p experiments/sigma/output/P1
 
-# Sigma
-mkdir experiments/sigma/output;
-mkdir experiments/sigma/output/P0;
-mkdir experiments/sigma/output/P1;
-
-# install matplotlib
-pip3 install matplotlib
+# Install matplotlib (if not already installed)
+pip install matplotlib  # Conda-installed pip should not require sudo
