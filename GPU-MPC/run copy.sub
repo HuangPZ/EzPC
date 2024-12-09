@@ -5,17 +5,17 @@
 #SBATCH -o ./slurm-%j.out
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=2
 #SBATCH --tasks-per-node=1
 #SBATCH --get-user-env
-#SBATCH --mem 300G
+#SBATCH --mem 500G
 #SBATCH -t 24:00:00
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:2
 #SBATCH --requeue
 #SBATCH --constraint="[a6000|a5500|3090]"
-#SBATCH --partition=suh
-export CUDA_VISIBLE_DEVICES=0,1,2,3
-export WORLD_SIZE=4
+
+export CUDA_VISIBLE_DEVICES=0,1
+export WORLD_SIZE=2
 source /home/ph448/.bashrc
 conda activate sigma
 echo $SLURMD_NODENAME
@@ -32,6 +32,6 @@ export CUDA_VERSION=11.7
 export GPU_ARCH=86
 
 cd /share/suh-scrap2/ph448/EzPC/GPU-MPC
-# sh setup.sh main
+sh setup.sh main
 make sigma
-# conda install matplotlib
+conda install matplotlib

@@ -20,7 +20,7 @@
 // SOFTWARE.
 
 #include <chrono>
-
+#include <iostream>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cstdio>
@@ -47,7 +47,11 @@ extern "C" void initGPUMemPool()
     uint64_t threshold = UINT64_MAX;
     checkCudaErrors(cudaMemPoolSetAttribute(mempool, cudaMemPoolAttrReleaseThreshold, &threshold));
     uint64_t *d_dummy_ptr;
-    uint64_t bytes = 40 * (1ULL << 30);
+    uint64_t bytes = 40 * (1ULL << 29);
+    size_t freeMemBeforeAlloc, totalMem;
+    checkCudaErrors(cudaMemGetInfo(&freeMemBeforeAlloc, &totalMem));
+    printf("Memory available before allocation: %zu bytes (total: %zu bytes)\n", freeMemBeforeAlloc, totalMem);
+    printf("Attempting to allocate: %llu bytes\n", bytes);
     checkCudaErrors(cudaMallocAsync(&d_dummy_ptr, bytes, 0));
     checkCudaErrors(cudaFreeAsync(d_dummy_ptr, 0));
     uint64_t reserved_read, threshold_read;
@@ -88,6 +92,7 @@ extern "C" void cpuFree(void *h_a, bool pinned)
 
 extern "C" uint8_t *moveToCPU(uint8_t *d_a, size_t size_in_bytes, Stats *s)
 {
+    std::cout << "Moving " << size_in_bytes << " bytes to CPU memory (moveIntoCPUMem)." << std::endl; // Debug print
     uint8_t *h_a = cpuMalloc(size_in_bytes, true);
     auto start = std::chrono::high_resolution_clock::now();
     checkCudaErrors(cudaMemcpy(h_a, d_a, size_in_bytes, cudaMemcpyDeviceToHost));
@@ -100,6 +105,7 @@ extern "C" uint8_t *moveToCPU(uint8_t *d_a, size_t size_in_bytes, Stats *s)
 
 extern "C" uint8_t *moveIntoGPUMem(uint8_t *d_a, uint8_t *h_a, size_t size_in_bytes, Stats *s)
 {
+    std::cout << "Moving " << size_in_bytes << " bytes to GPU memory (moveIntoGPUMem)." << std::endl; // Debug print
     auto start = std::chrono::high_resolution_clock::now();
     checkCudaErrors(cudaMemcpy(d_a, h_a, size_in_bytes, cudaMemcpyHostToDevice));
     auto end = std::chrono::high_resolution_clock::now();
@@ -111,6 +117,7 @@ extern "C" uint8_t *moveIntoGPUMem(uint8_t *d_a, uint8_t *h_a, size_t size_in_by
 
 extern "C" uint8_t *moveIntoCPUMem(uint8_t *h_a, uint8_t *d_a, size_t size_in_bytes, Stats *s)
 {
+    std::cout << "Moving " << size_in_bytes << " bytes to CPU memory (moveIntoCPUMem)." << std::endl; // Debug print
     auto start = std::chrono::high_resolution_clock::now();
     checkCudaErrors(cudaMemcpy(h_a, d_a, size_in_bytes, cudaMemcpyDeviceToHost));
     auto end = std::chrono::high_resolution_clock::now();
@@ -122,6 +129,7 @@ extern "C" uint8_t *moveIntoCPUMem(uint8_t *h_a, uint8_t *d_a, size_t size_in_by
 
 extern "C" uint8_t *moveToGPU(uint8_t *h_a, size_t size_in_bytes, Stats *s)
 {
+    std::cout << "Moving " << size_in_bytes << " bytes to GPU memory (moveIntoGPUMem)." << std::endl; // Debug print
     uint8_t *d_a = gpuMalloc(size_in_bytes);
     auto start = std::chrono::high_resolution_clock::now();
     checkCudaErrors(cudaMemcpy(d_a, h_a, size_in_bytes, cudaMemcpyHostToDevice));

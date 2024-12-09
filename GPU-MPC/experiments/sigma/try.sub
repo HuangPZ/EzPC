@@ -1,0 +1,74 @@
+#!/bin/bash
+#SBATCH -J sigma
+#SBATCH --mail-type=BEGIN                      # Request status by email #SBATCH --partition=suh #SBATCH --constraint="gpu-mid|gpu-high" #SBATCH --exclude=fang-compute-01,fang-compute-02
+#SBATCH --mail-user=ph448@cornell.edu        # Email address to send results to.#SBATCH --partition=suh #SBATCH --partition=suh  #SBATCH --exclude=rush-compute-03,dgx2-compute-02,davis-compute-02,brandal,abdelfattah-compute-02,lancer-compute-01,sun-compute-03,snavely-compute-03,seo-compute-01,seo-compute-02
+#SBATCH -o ./slurm-%j.out
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+#SBATCH --tasks-per-node=1
+#SBATCH --get-user-env
+#SBATCH --mem 200G
+#SBATCH -t 24:00:00
+#SBATCH --gres=gpu:2
+#SBATCH --requeue
+#SBATCH --partition=suh
+#SBATCH --nodelist=suh-compute-01
+
+
+# export CUDA_VISIBLE_DEVICES=0,1
+export WORLD_SIZE=2
+source /home/ph448/.bashrc
+conda activate sigma
+echo $SLURMD_NODENAME
+
+# cd /share/suh-scrap2/ph448/cutlass/build
+export CUDA_HOME=$CONDA_PREFIX
+export PATH=$CUDA_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+
+# make -j$(nproc)
+# /share/suh-scrap2/ph448/cutlass/tools/test/unit/cutlass_test
+# make test_unit -j
+export CUDA_VERSION=11.7
+export GPU_ARCH=86
+
+MODEL="bert-tiny"
+SEQUENCE_LENGTH=32
+CPU_THREADS=8
+LOCAL_IP="127.0.0.1"  # Using localhost since both server and client are on the same machine
+cd ../..
+make sigma
+cd experiments/sigma
+# # Configuration for server and client (if applicable)
+# CONFIG_SERVER="{
+#     \"P0\": {
+#         \"gpu\": 0,
+#         \"peer\": \"$LOCAL_IP\",
+#         \"cpu_threads\": $CPU_THREADS
+#     }
+# }"
+# CONFIG_CLIENT="{
+#     \"P1\": {
+#         \"gpu\": 0,
+#         \"peer\": \"$LOCAL_IP\",
+#         \"cpu_threads\": $CPU_THREADS
+#     }
+# }"
+
+# # Write the config.json for server and client
+# echo $CONFIG_SERVER > config_server.json
+# echo $CONFIG_CLIENT > config_client.json
+
+# Run the server process
+CUDA_VISIBLE_DEVICES=0 ./sigma $MODEL $SEQUENCE_LENGTH 0 $LOCAL_IP $CPU_THREADS &
+
+# Run the client process
+CUDA_VISIBLE_DEVICES=1 ./sigma $MODEL $SEQUENCE_LENGTH 1 $LOCAL_IP $CPU_THREADS &
+
+# Wait for both processes to complete
+wait
+
+# # Optionally run the experiment script (adjust options as needed)
+# srun --ntasks=1 python run_experiment.py --party 0 --perf true
+# srun --ntasks=1 python run_experiment.py --party 1 --perf true
