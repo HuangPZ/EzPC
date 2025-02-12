@@ -2,20 +2,20 @@
     "P0": {
         "dealer": {
             "gpu": 0,
-            "key_dir": "/tmp/"
+            "key_dir": "/home/cc/my_mounting_point"
         },
         "evaluator": {
-            "gpu": 1,
+            "gpu": 0,
             "peer": "0.0.0.0"
         }
     },
     "P1": {
         "dealer": {
-            "gpu": 2,
-            "key_dir": "/tmp/"
+            "gpu": 1,
+            "key_dir": "/home/cc/my_mounting_point"
         },
         "evaluator": {
-            "gpu": 3,
+            "gpu": 1,
             "peer": "0.0.0.0"
         }
     }

@@ -242,7 +242,7 @@ def run_table8(party, dealer_gpu, eval_gpu, dealer_key_dir, peer_ip):
 def run_table9(party, dealer_gpu, eval_gpu, dealer_key_dir, peer_ip):
     log_dir = 'output/P{}/Table9/logs/'.format(party)
 
-    for tup in [('VGG16', 64, 24, ''), ('ResNet18', 64, 24, ''), ('ResNet50', 64, 24, ''), ('ResNet50', 37, 12, ''), ('VGG16', 32, 12, '_u32'), ('ResNet18', 32, 10, '_u32')]:
+    for tup in [ ('ResNet18', 64, 24, '')]:
         network, bw, scale, bin_suffix = tup
         dealer_cmd = "CUDA_VISIBLE_DEVICES={} ./orca_inference{} {} {} {} {} {} {}".format(dealer_gpu, bin_suffix, network, bw, scale, 0, party, dealer_key_dir)
         eval_cmd = "CUDA_VISIBLE_DEVICES={} ./orca_inference{} {} {} {} {} {} {} {}".format(eval_gpu, bin_suffix, network, bw, scale, 1, party, dealer_key_dir, peer_ip)
@@ -251,7 +251,7 @@ def run_table9(party, dealer_gpu, eval_gpu, dealer_key_dir, peer_ip):
         remove_key(dealer_key_dir, key_file)
 
     table = dict()
-    for tup in [('VGG16', 64, 24), ('ResNet50', 64, 24), ('ResNet18', 64, 24), ('ResNet50', 37, 12), ('VGG16', 32, 12), ('ResNet18', 32, 10)]:
+    for tup in [('ResNet18', 64, 24)]:
         network, bw, scale = tup
         if not network in table:
             table[network] = dict()
