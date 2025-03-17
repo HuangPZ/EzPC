@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
     std::vector<u64> inpShape;
     if (modelName.compare("VGG16") == 0 || modelName.compare("ResNet50") == 0 || modelName.compare("ResNet18") == 0)
     {
-        u64 shape[4] = {1, 224, 224, 3};
+        u64 shape[4] = {2, 224, 224, 3};
         inpShape.insert(inpShape.end(), shape, shape + 4);
     }
     else if (modelName.compare("CNN3") == 0 || modelName.compare("AlexNet") == 0)

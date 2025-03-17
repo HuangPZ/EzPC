@@ -27,6 +27,8 @@
 // #include <sys/types.h>
 // extern cudaMemPool_t mempool;
 
+// extern "C" bool FAKE_AES = true;
+
 extern "C" uint8_t *gpuMalloc(size_t size_in_bytes);
 extern "C" uint8_t *cpuMalloc(size_t size_in_bytes, bool pin = true);
 extern "C" void cpuFree(void *h_a, bool pinned = true);

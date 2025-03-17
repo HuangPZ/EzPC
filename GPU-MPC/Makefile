@@ -8,13 +8,13 @@ SYTORCH_BUILD_PATH=$(SYTORCH_PATH)/build
 LLAMA_PATH=$(SYTORCH_PATH)/ext/llama
 CUDA_ARCH =$(GPU_ARCH)
 
-CXX=/home/cc/miniconda3/envs/cuda/bin/nvcc
+CXX=/share/suh-scrap2/ph448/envs/sigma/bin/nvcc
 FLAGS := -O3 -gencode arch=compute_$(CUDA_ARCH),code=[sm_$(CUDA_ARCH),compute_$(CUDA_ARCH)] -std=c++17 -m64 -Xcompiler="-O3,-w,-std=c++17,-fpermissive,-fpic,-pthread,-fopenmp,-march=native" 
-LIBS := -lsytorch -lcryptoTools -lLLAMA -lbitpack -lcuda -lcudart -lcurand
+LIBS := -L$(CUDA_HOME)/lib64 -lsytorch -lcryptoTools -lLLAMA -lbitpack -lcuda -lcudart -lcurand
 SECFLOAT_LIBS := -lSCI-FloatML -lSCI-FloatingPoint -lSCI-BuildingBlocks -lSCI-LinearOT -lSCI-GC -lcrypto
 
 UTIL_FILES := ./utils/gpu_mem.cu ./utils/gpu_file_utils.cpp ./utils/sigma_comms.cpp
-OBJ_INCLUDES := -I '$(CUTLASS_PATH)/include' -I '$(CUTLASS_PATH)/tools/util/include' -I '$(SYTORCH_PATH)/include' -I '$(LLAMA_PATH)/include' -I '$(SYTORCH_PATH)/ext/cryptoTools' -I '.'
+OBJ_INCLUDES := -I '$(CUTLASS_PATH)/include' -I '$(CUTLASS_PATH)/tools/util/include' -I '$(SYTORCH_PATH)/include' -I '$(LLAMA_PATH)/include' -I '$(SYTORCH_PATH)/ext/cryptoTools' -I '.' -I '$(CONDA_PREFIX)/include'
 INCLUDES := $(OBJ_INCLUDES) -L$(CUTLASS_PATH)/build/tools/library -L$(SYTORCH_BUILD_PATH) -L$(SYTORCH_BUILD_PATH)/ext/cryptoTools -L$(SYTORCH_BUILD_PATH)/ext/llama -L$(SYTORCH_BUILD_PATH)/ext/bitpack -L$(SYTORCH_BUILD_PATH)/lib
 
 dpf: tests/fss/dpf.cu

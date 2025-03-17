@@ -537,6 +537,186 @@ public:
     }
 };
 
+
+// #include <vector>
+
+// // Assume that SytorchModule, Conv2D, ReLU, MaxPool2D, GlobalAvgPool2D, Flatten, FC, and Tensor 
+// // are defined similarly to your ResNet18 example.
+
+// template <typename T>
+// class Bottleneck : public SytorchModule<T>
+// {
+// public:
+//     using SytorchModule<T>::add;
+
+//     // These pointers represent the three convolution layers and ReLU activations.
+//     Conv2D<T>* conv1;   // 1x1 conv that reduces channels
+//     ReLU<T>* relu1;
+//     Conv2D<T>* conv2;   // 3x3 conv
+//     ReLU<T>* relu2;
+//     Conv2D<T>* conv3;   // 1x1 conv that expands channels
+//     ReLU<T>* relu3;     // ReLU applied after addition
+
+//     // When the input and output sizes differ, we use a projection shortcut.
+//     Conv2D<T>* shortcut;  // set to nullptr if no projection is needed
+
+//     // Constructor:
+//     //   in_channels: number of input channels
+//     //   bottleneck_channels: number of channels in the internal (1x1 and 3x3) convs
+//     //   out_channels: number of output channels (usually 4×bottleneck_channels)
+//     //   stride: stride for the first convolution (used for downsampling when needed)
+//     //   use_shortcut: if true, then create a 1x1 convolution to match dimensions.
+//     Bottleneck(int in_channels, int bottleneck_channels, int out_channels, int stride, bool use_shortcut)
+//     {
+//         conv1 = new Conv2D<T>(in_channels, bottleneck_channels, 1, 0, stride, true);
+//         relu1 = new ReLU<T>();
+
+//         conv2 = new Conv2D<T>(bottleneck_channels, bottleneck_channels, 3, 1, 1, true);
+//         relu2 = new ReLU<T>();
+
+//         conv3 = new Conv2D<T>(bottleneck_channels, out_channels, 1, 0, 1, true);
+//         relu3 = new ReLU<T>(); // Activation after the addition
+
+//         if (use_shortcut) {
+//             shortcut = new Conv2D<T>(in_channels, out_channels, 1, 0, stride, true);
+//         } else {
+//             shortcut = nullptr;
+//         }
+//     }
+
+//     // The forward pass applies the three convolutions (with ReLU in between) then adds the
+//     // shortcut (either identity or projection) and applies a final ReLU.
+//     Tensor<T>& _forward(Tensor<T>& input)
+//     {
+//         auto &x1 = conv1->forward(input);
+//         auto &x2 = relu1->forward(x1);
+//         auto &x3 = conv2->forward(x2);
+//         auto &x4 = relu2->forward(x3);
+//         auto &x5 = conv3->forward(x4);
+
+//         Tensor<T>* identity;
+//         if (shortcut) {
+//             identity = &shortcut->forward(input);
+//         } else {
+//             identity = &input;
+//         }
+//         auto &sum = add(x5, *identity);
+//         auto &out = relu3->forward(sum);
+//         return out;
+//     }
+// };
+
+// template <typename T>
+// class ResNet18 : public SytorchModule<T>
+// {
+// public:
+//     using SytorchModule<T>::add;
+
+//     // The initial layers (conv1 + maxpool)
+//     Conv2D<T>* conv1;
+//     ReLU<T>* relu;
+//     MaxPool2D<T>* maxpool;
+
+//     // Layers for each stage of the network.
+//     // Stage 1 (conv2_x): 3 bottleneck blocks.
+//     std::vector<Bottleneck<T>*> layer1;
+//     // Stage 2 (conv3_x): 8 bottleneck blocks.
+//     std::vector<Bottleneck<T>*> layer2;
+//     // Stage 3 (conv4_x): 36 bottleneck blocks.
+//     std::vector<Bottleneck<T>*> layer3;
+//     // Stage 4 (conv5_x): 3 bottleneck blocks.
+//     std::vector<Bottleneck<T>*> layer4;
+
+//     // The final classification layers.
+//     GlobalAvgPool2D<T>* globalavgpool;
+//     Flatten<T>* flatten;
+//     FC<T>* fc;
+
+//     ResNet18()
+//     {
+//         // The initial convolution: 7x7, 64 filters, stride 2, padding 3.
+//         conv1 = new Conv2D<T>(3, 64, 7, 3, 2, true);
+//         relu = new ReLU<T>();
+//         maxpool = new MaxPool2D<T>(3, 1, 2);
+
+//         // -------------------------
+//         // Stage 1: conv2_x
+//         // Input channels: 64; first block outputs 256 channels (with bottleneck channels = 64)
+//         // The first block needs a projection because 64 != 256.
+//         layer1.push_back(new Bottleneck<T>(64, 64, 256, 1, true));
+//         // The next two blocks use identity shortcuts (input is already 256).
+//         layer1.push_back(new Bottleneck<T>(256, 64, 256, 1, false));
+//         layer1.push_back(new Bottleneck<T>(256, 64, 256, 1, false));
+
+//         // -------------------------
+//         // Stage 2: conv3_x
+//         // Input channels: 256; first block downsamples and outputs 512 channels (bottleneck channels = 128).
+//         layer2.push_back(new Bottleneck<T>(256, 128, 512, 2, true));
+//         // Next 7 blocks (stride = 1, identity shortcut).
+//         for (int i = 0; i < 7; i++) {
+//             layer2.push_back(new Bottleneck<T>(512, 128, 512, 1, false));
+//         }
+
+//         // -------------------------
+//         // Stage 3: conv4_x
+//         // Input channels: 512; first block downsamples and outputs 1024 channels (bottleneck channels = 256).
+//         layer3.push_back(new Bottleneck<T>(512, 256, 1024, 2, true));
+//         // Next 35 blocks.
+//         for (int i = 0; i < 35; i++) {
+//             layer3.push_back(new Bottleneck<T>(1024, 256, 1024, 1, false));
+//         }
+
+//         // -------------------------
+//         // Stage 4: conv5_x
+//         // Input channels: 1024; first block downsamples and outputs 2048 channels (bottleneck channels = 512).
+//         layer4.push_back(new Bottleneck<T>(1024, 512, 2048, 2, true));
+//         // Next 2 blocks.
+//         for (int i = 0; i < 2; i++) {
+//             layer4.push_back(new Bottleneck<T>(2048, 512, 2048, 1, false));
+//         }
+
+//         // -------------------------
+//         // Final layers: global average pooling, flattening, and fully-connected classification.
+//         globalavgpool = new GlobalAvgPool2D<T>();
+//         flatten = new Flatten<T>();
+//         fc = new FC<T>(2048, 1000, true);
+//     }
+
+//     Tensor<T>& _forward(Tensor<T>& input)
+//     {
+//         auto &x = conv1->forward(input);
+//         auto &x_relu = relu->forward(x);
+//         auto &x_pool = maxpool->forward(x_relu);
+
+//         // Pass through stage 1 (conv2_x)
+//         Tensor<T>* out = &x_pool;
+//         for (auto block : layer1) {
+//             out = &block->_forward(*out);
+//         }
+
+//         // Pass through stage 2 (conv3_x)
+//         for (auto block : layer2) {
+//             out = &block->_forward(*out);
+//         }
+
+//         // Pass through stage 3 (conv4_x)
+//         for (auto block : layer3) {
+//             out = &block->_forward(*out);
+//         }
+
+//         // Pass through stage 4 (conv5_x)
+//         for (auto block : layer4) {
+//             out = &block->_forward(*out);
+//         }
+
+//         auto &x_avg = globalavgpool->forward(*out);
+//         auto &x_flat = flatten->forward(x_avg);
+//         auto &x_fc = fc->forward(x_flat);
+//         return x_fc;
+//     }
+// };
+
+
 template <typename T>
 class ResNet50 : public SytorchModule<T>
 {

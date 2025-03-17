@@ -2,7 +2,7 @@
     "P0": {
         "dealer": {
             "gpu": 0,
-            "key_dir": "/home/cc/my_mounting_point"
+            "key_dir": "/share/suh-scrap2/ph448/"
         },
         "evaluator": {
             "gpu": 0,
@@ -12,7 +12,7 @@
     "P1": {
         "dealer": {
             "gpu": 1,
-            "key_dir": "/home/cc/my_mounting_point"
+            "key_dir": "/share/suh-scrap2/ph448/"
         },
         "evaluator": {
             "gpu": 1,
