@@ -119,6 +119,11 @@ extern "C" uint8_t *moveIntoCPUMem(uint8_t *h_a, uint8_t *d_a, size_t size_in_by
 {
     std::cout << "Moving " << size_in_bytes << " bytes to CPU memory (moveIntoCPUMem)." << std::endl; // Debug print
     auto start = std::chrono::high_resolution_clock::now();
+    printf("pointers: %p %p %zu\n", h_a, d_a, size_in_bytes);
+    printf("allocated")
+
+
+    
     checkCudaErrors(cudaMemcpy(h_a, d_a, size_in_bytes, cudaMemcpyDeviceToHost));
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = end - start;
@@ -129,7 +134,8 @@ extern "C" uint8_t *moveIntoCPUMem(uint8_t *h_a, uint8_t *d_a, size_t size_in_by
 
 extern "C" uint8_t *moveToGPU(uint8_t *h_a, size_t size_in_bytes, Stats *s)
 {
-    std::cout << "Moving " << size_in_bytes << " bytes to GPU memory (moveIntoGPUMem)." << std::endl; // Debug print
+    // std::cout << "Moving " << size_in_bytes << " bytes to GPU memory (moveIntoGPUMem)." << std::endl; // Debug print
+    // std::cout << "Host pointer: " << static_cast<void *>(h_a) << std::endl;
     uint8_t *d_a = gpuMalloc(size_in_bytes);
     auto start = std::chrono::high_resolution_clock::now();
     checkCudaErrors(cudaMemcpy(d_a, h_a, size_in_bytes, cudaMemcpyHostToDevice));

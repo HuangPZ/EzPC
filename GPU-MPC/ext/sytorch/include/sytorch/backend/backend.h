@@ -88,6 +88,7 @@ public:
     virtual void conv2D(u64 fh, u64 fw, u64 padding, u64 stride, u64 ci, u64 co, const Tensor4D<T> &input, const Tensor2D<T> &filter, bool useBias, const Tensor1D<T> &bias, Tensor4D<T> &output, bool isFirst)
     {
         conv2D(fh, fw, padding, stride, ci, co, input, filter, output, isFirst);
+        printf("useBias=%d\n", useBias);
         if (useBias)
         {
             auto output_as_nd = output.as_nd();

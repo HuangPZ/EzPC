@@ -24,6 +24,7 @@
 #include "gpt2.h"
 #include "bert.h"
 #include "llama2.h"
+#include "resnet20.h"
 #include "backend/sigma.h"
 
 inline std::string toGB(u64 bytes)
@@ -33,11 +34,13 @@ inline std::string toGB(u64 bytes)
 
 int main(int __argc, char **__argv)
 {
+    printf("Starting\n");
     sytorch_init();
 
     u64 n_embd = 0;
     u64 n_head = 0;
     u64 n_layer = 0;
+    u64 batch_size = 1;
     std::string attnMask = "none";
     std::string qkvFormat = "qkvconcat";
     int bw = 0;
@@ -167,6 +170,33 @@ int main(int __argc, char **__argv)
         net->init(scale, input);
         net->zero();
     }
+    else if (model == "resnet20")
+    {
+        // Adjust sequence length and embedding size for ResNet20
+        n_seq = 32;  // Input height and width for CIFAR-10
+        n_embd = 3;  // Number of input channels (RGB)
+        bw = 37;
+        batch_size = 128;  // Batch size
+        //printf("Model: ResNet20 starting \n");
+        net = new ResNet20<u64>();  // Create a ResNet20 instance
+        //printf("ResNet20 initialized. \n");
+        // Resize the input tensor to match ResNet20 input dimensions
+        input.resize({batch_size, n_seq, n_seq, n_embd});  
+        //printf("Input tensor resized. \n");
+        input.zero();  // Initialize input tensor with zeros
+        //printf("Input tensor initialized. \n");
+        // Initialize the network with the scale and input tensor
+        net->init(scale, input);
+        //printf("Network initialized. \n");
+        net->zero();  // Zero out any internal states
+        //printf("Network zerod. \n");
+        keyBufSz = 2*OneGB;  // Key buffer size
+    }
+    else
+    {
+        printf("Model not supported\n");
+        return 0;
+    }
     srand(time(NULL));
     std::string outDir = "output/P" + std::to_string(party) + "/models/";
     makeDir(outDir);
@@ -174,15 +204,23 @@ int main(int __argc, char **__argv)
     makeDir(inferenceDir);
 
     auto sigmaKeygen = new SIGMAKeygen<u64>(party, bw, scale, "", keyBufSz);
+    //printf("Keygen\n");
     net->setBackend(sigmaKeygen);
+    //printf("Set backend\n");
     net->optimize();
+    //printf("Optimize\n");
     auto start = std::chrono::high_resolution_clock::now();
+    printf("sizes: %ld %ld\n", input.size(), input.size() * sizeof(u64));
     input.d_data = (u64 *)moveToGPU((u8 *)input.data, input.size() * sizeof(u64), (Stats *)NULL);
-    auto &activation = net->forward(input);
+    //printf("moved to gpu\n");
+    auto &activation = net->_forward(input);
+    //printf("forward\n");
     sigmaKeygen->output(activation);
+    //printf("output\n");
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     sigmaKeygen->close();
+    printf("Total time=%ld us\n", elapsed.count());
     std::stringstream ss;
     ss << "Total time=" + std::to_string(elapsed.count()) + " us";
     ss << std::endl;

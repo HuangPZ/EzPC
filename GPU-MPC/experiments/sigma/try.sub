@@ -5,15 +5,15 @@
 #SBATCH -o ./slurm-%j.out
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=8
 #SBATCH --tasks-per-node=1
 #SBATCH --get-user-env
-#SBATCH --mem 200G
+#SBATCH --mem 50G
 #SBATCH -t 24:00:00
 #SBATCH --gres=gpu:2
 #SBATCH --requeue
-#SBATCH --partition=suh
-#SBATCH --nodelist=suh-compute-01
+#SBATCH --constraint="[a6000|a5500|3090]"
+
 
 
 # export CUDA_VISIBLE_DEVICES=0,1
@@ -33,11 +33,15 @@ export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 export CUDA_VERSION=11.7
 export GPU_ARCH=86
 
-MODEL="bert-tiny"
+MODEL="resnet20"
+# MODEL="bert-tiny"
 SEQUENCE_LENGTH=32
 CPU_THREADS=8
 LOCAL_IP="127.0.0.1"  # Using localhost since both server and client are on the same machine
 cd ../..
+touch /share/suh-scrap2/ph448/EzPC/GPU-MPC/utils/gpu_random.cu
+touch /share/suh-scrap2/ph448/EzPC/GPU-MPC/utils/gpu_mem.cu
+# make clean
 make sigma
 cd experiments/sigma
 # # Configuration for server and client (if applicable)
@@ -60,8 +64,9 @@ cd experiments/sigma
 # echo $CONFIG_SERVER > config_server.json
 # echo $CONFIG_CLIENT > config_client.json
 
+echo "Running Sigma with model $MODEL and sequence length $SEQUENCE_LENGTH"
 # Run the server process
-CUDA_VISIBLE_DEVICES=0 ./sigma $MODEL $SEQUENCE_LENGTH 0 $LOCAL_IP $CPU_THREADS &
+CUDA_VISIBLE_DEVICES=0 ./sigma $MODEL $SEQUENCE_LENGTH 0 $LOCAL_IP $CPU_THREADS & > /dev/null
 
 # Run the client process
 CUDA_VISIBLE_DEVICES=1 ./sigma $MODEL $SEQUENCE_LENGTH 1 $LOCAL_IP $CPU_THREADS &

@@ -39,6 +39,9 @@
 #include "fss/gpu_mha.h"
 #include "fss/gpu_add.h"
 
+#include "fss/gpu_relu.h"
+#include "fss/gpu_conv2d.h"
+
 template <typename T>
 void noTruncateAfterRmsnorm(LayerGraphNode<T> *n, LayerGraphNode<T> *r)
 {
@@ -140,6 +143,72 @@ public:
         s.matmul_time += std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
     }
 
+    void conv2D(u64 fh, u64 fw, u64 padding, u64 stride, u64 ci, u64 co,
+                        const Tensor4D<T> &input, const Tensor2D<T> &filter, 
+                        Tensor4D<T> &output, bool useBias)
+    {
+        auto start = std::chrono::high_resolution_clock::now();
+        // Validate input dimensions
+        // printf("Conv2D new\n");
+        always_assert(filter.d1 == co && filter.d2 == fh * fw * ci);
+
+        // Initialize Conv2DParams
+        Conv2DParams p = {
+            .bin = bw,  // Bit-width for inputs
+            .bout = bw, // Bit-width for outputs
+            .N = input.d1,
+            .H = input.d2,
+            .W = input.d3,
+            .CI = static_cast<int>(ci),
+            .FH = static_cast<int>(fh),
+            .FW = static_cast<int>(fw),
+            .CO = static_cast<int>(co),
+            .zPadHLeft = static_cast<int>(padding),
+            .zPadHRight = static_cast<int>(padding),
+            .zPadWLeft = static_cast<int>(padding),
+            .zPadWRight = static_cast<int>(padding),
+            .strideH = static_cast<int>(stride),
+            .strideW = static_cast<int>(stride)
+        };
+        
+        // Fill Conv2DParams with calculated output dimensions
+        fillConv2DParams(&p);
+        GPUConv2DKey<T> k = {
+            .p = p,
+            .mem_size_I = p.size_I,
+            .mem_size_F = p.size_F,
+            .mem_size_O = p.size_O,
+            .I = input.d_data,
+            .F = filter.data,
+            .O = output.d_data
+        };
+        T *d_I = input.d_data;  // Pointer to input tensor on GPU
+        T *d_F = filter.data;   // Pointer to filter tensor on GPU
+
+        // Allocate or assign output memory
+        // T *d_C = output.d_data; // Pointer to output tensor on GPU
+        output.d_data = gpuConv2DWrapper<T>(k, d_I, d_F, (T *)NULL,(char)0, (bool)false);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto elapsed = end - start;
+        s.conv_time += std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
+
+    }
+
+    void relu(Tensor<T> &output, Tensor<T> &drelu, const Tensor<T> &input, u64 scale, int mode = 0) {
+        auto start = std::chrono::high_resolution_clock::now();
+
+        // Generate the ReLU derivative mask
+        auto k = readReluKey<T>(&keyBuf);
+
+        // Generate the ReLU output using the derivative mask
+        output.d_data = gpuRelu<T, T, 0, 0, false>(peer, party, k, input.d_data, &g, &s); //some problem in ReLU realization
+
+        auto end = std::chrono::high_resolution_clock::now();
+        auto elapsed = end - start;
+        s.relu_time += std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
+    }
+
+
     void gelu(const Tensor<T> &in, Tensor<T> &out, u64 scale, u64 mode = 0)
     {
         u64 b0 = peer->bytesSent() + peer->bytesReceived();
@@ -222,6 +291,7 @@ public:
 
         TruncateType t = TruncateType::TrFloor;
         auto k = readGPUTruncateKey<T>(t, &keyBuf);
+        printf("TruncateForward_GPUtruncate\n");
         in.d_data = gpuTruncate<T, T>(k.bin, k.bout, t, k, k.shift, peer, party, k.N, in.d_data, &g, &s);
 
         auto end = std::chrono::high_resolution_clock::now();
@@ -332,6 +402,54 @@ public:
         c.d_data = gpuKeygenMatmul<T>(&keyBuf, party, p, a.d_data, b.data, (T *)NULL, TruncateType::None, &g, false);
     }
 
+    void conv2D(u64 fh, u64 fw, u64 padding, u64 stride, u64 ci, u64 co,
+                        const Tensor4D<T> &input, const Tensor2D<T> &filter, 
+                        Tensor4D<T> &output, bool useBias)
+    {
+        // Validate input dimensions
+        printf("Conv2D new\n");
+        always_assert(filter.d1 == co && filter.d2 == fh * fw * ci);
+
+        // Initialize Conv2DParams
+        Conv2DParams p = {
+            .bin = bw,  // Bit-width for inputs
+            .bout = bw, // Bit-width for outputs
+            .N = input.d1,
+            .H = input.d2,
+            .W = input.d3,
+            .CI = static_cast<int>(ci),
+            .FH = static_cast<int>(fh),
+            .FW = static_cast<int>(fw),
+            .CO = static_cast<int>(co),
+            .zPadHLeft = static_cast<int>(padding),
+            .zPadHRight = static_cast<int>(padding),
+            .zPadWLeft = static_cast<int>(padding),
+            .zPadWRight = static_cast<int>(padding),
+            .strideH = static_cast<int>(stride),
+            .strideW = static_cast<int>(stride)
+        };
+        
+        // Fill Conv2DParams with calculated output dimensions
+        fillConv2DParams(&p);
+        GPUConv2DKey<T> k = {
+            .p = p,
+            .mem_size_I = p.size_I,
+            .mem_size_F = p.size_F,
+            .mem_size_O = p.size_O,
+            .I = input.d_data,
+            .F = filter.data,
+            .O = output.d_data
+        };
+        output.d_data = gpuKeygenConv2D<T>(&keyBuf, party, k, input.d_data, filter.data, useBias, output.d_data);
+    }
+
+    void relu(Tensor<T> &output, Tensor<T> &drelu, const Tensor<T> &input, u64 scale, int mode = 0) {
+        // drelu is not used here
+        drelu.d_data = gpuKeyGenDRelu<T>(&keyBuf, party, bw, input.size(), input.d_data, &g);
+        // Generate the ReLU output using the derivative mask
+        output.d_data = gpuKeyGenSelect<T, T>(&keyBuf, party, input.size(), input.d_data, drelu.d_data, bw);
+    }
+
     void gelu(const Tensor<T> &in, Tensor<T> &out, u64 scale, u64 mode = 0)
     {
         out.d_data = gpuKeyGenGelu<T, u8, 8>(&keyBuf, party, bw, bw - scale, (int)scale, in.size(), in.d_data, &g);
@@ -382,6 +500,8 @@ public:
     void truncateForward(Tensor<T> &in, u64 shift, u8 mode = 0)
     {
         TruncateType t = TruncateType::TrFloor;
+        printf("Truncate forward\n");
+        printf("parameters: %d, %d, %d, %d\n", t, bw, shift, in.size());
         in.d_data = genGPUTruncateKey<T, T>(&keyBuf, party, t, bw, bw, shift, in.size(), in.d_data, &g);
     }
 
@@ -416,4 +536,6 @@ public:
         topologicalApply(root, [&](LayerGraphNode<T> *n, LayerGraphNode<T> *r)
                          { noTruncateAfterRmsnorm(n, r); });
     }
+
+
 };

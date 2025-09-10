@@ -111,6 +111,7 @@ public:
 
     Tensor<T> &forward(std::vector<Tensor<T> *> &a)
     {
+        printf("Layer=%s, doTruncationForward=%d\n", this->name.data(), this->doTruncationForward);
         if (a[0]->graphGenMode)
         {
             for (auto &i : a)
@@ -162,18 +163,22 @@ public:
                 this->backend->signext(*i, scale);
             }
         }
+        printf("_forward\n");
         _forward(a);
         // printf("Layer=%s, doTruncationForward=%d\n", this->name.data(), this->doTruncationForward);
         if (doTruncationForward)
         {
+            printf("Truncating\n");
             this->backend->truncateForward(activation, scale, forwardTruncationMode);
         }
         if (doPostSignExtension)
         {
+            printf("PostSignExtension\n");
             this->backend->signext(activation, scale);
         }
         for (auto &i : a)
         {
+            printf("Incrementing\n");
             i->graphNode->incrementAndGc();
         }
         return activation;
@@ -249,12 +254,16 @@ public:
 
     void _forward(Tensor<T> &a)
     {
+        // printf("Conv2D _Forward\n");
         always_assert(a.shape.size() == 4);
         assert(a.shape[3] == ci);
         // if (this->isTrainingMode)
         //     inp.as_nd().copy(a, false, a.d_data != nullptr);
+        // printf("Conv2D Forward2\n");
         auto act_4d = this->activation.as_4d();
+        // printf("Conv2D Forward3\n");
         this->backend->conv2D(fh, fw, padding, stride, ci, co, a.as_4d(), filter, this->useBias, bias, act_4d, this->isFirst);
+        // printf("Conv2D Forward4\n");
         this->activation.d_data = act_4d.d_data;
     }
 
@@ -644,7 +653,7 @@ public:
 
     void _forward(Tensor<T> &a)
     {
-        this->backend->relu(a, this->activation, this->drelu, this->scale, this->mode);
+        this->backend->relu(this->activation, this->drelu, a, this->scale, this->mode); //why is drelu constant in the backend
         // printf("Relu=%ld, %ld\n", this->activation.data[0], this->activation.data[1]);
     }
 

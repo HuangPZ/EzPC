@@ -170,8 +170,24 @@ void writeShares(u8 **key_as_bytes, int party, u64 N, TIn *d_A, int bw, bool ran
 
   getPackedSharesKernel<<<(N - 1) / 256 + 1, 256>>>(N, party, d_A, d_A0, d_packed_A, bw);
   checkCudaErrors(cudaDeviceSynchronize());
-
-  moveIntoCPUMem((u8 *)*key_as_bytes, (u8 *)d_packed_A, memSzA, NULL);
+  printf("Writing shares2: %d, %d, %ld\n", party, bw, memSzA);
+  if (*key_as_bytes == NULL) {
+      printf("Allocating memory for key_as_bytes\n");
+      *key_as_bytes = (u8 *)malloc(memSzA);
+      if (*key_as_bytes == NULL) {
+          printf("Failed to allocate memory for key_as_bytes\n");
+          return; // Handle the error appropriately
+      }
+  }
+  cudaPointerAttributes attributes;
+  err = cudaPointerGetAttributes(&attributes, d_packed_A);
+  if (err != cudaSuccess) {
+      fprintf(stderr, "Invalid GPU pointer or error: %s\n", cudaGetErrorString(err));
+  } else {
+      // attributes contains info about the pointer
+      printf("Pointer is valid on device.\n");
+  }
+  // moveIntoCPUMem((u8 *)*key_as_bytes, (u8 *)d_packed_A, memSzA, NULL);
   *key_as_bytes += memSzA;
 
   if (d_A0)

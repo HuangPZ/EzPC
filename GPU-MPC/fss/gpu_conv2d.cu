@@ -415,6 +415,7 @@ T *gpuConv2DPlaintext(GPUConv2DKey<T> k, T *d_I, T *d_F, T *d_C, char op, bool c
 template <typename T>
 T *gpuKeygenConv2D(u8 **key_as_bytes, int party, GPUConv2DKey<T> k, T *d_mask_I = NULL, T *h_mask_F = NULL, bool maskOutput = false, T* d_mask_C = NULL)
 {
+    // printf("Keygen conv2d\n");
     bool mask_I_was_null = false;
     if (!d_mask_I)
     {
@@ -425,7 +426,9 @@ T *gpuKeygenConv2D(u8 **key_as_bytes, int party, GPUConv2DKey<T> k, T *d_mask_I 
     // T *d_mask_F = NULL;
     // if (h_mask_F)
     // {
+    // printf("moving to gpu, size=%lu; %lu\n", k.p.size_F, k.mem_size_F);
     T* d_mask_F = (T *)moveToGPU((u8 *)h_mask_F, k.mem_size_F, NULL);
+    // printf("moved to gpu\n");
     // }
     // else
     // {
@@ -443,15 +446,17 @@ T *gpuKeygenConv2D(u8 **key_as_bytes, int party, GPUConv2DKey<T> k, T *d_mask_I 
     }
 
     auto d_masked_C = gpuConv2DPlaintext(k, d_mask_I, d_mask_F, d_mask_C, 0, false);
-    // printf("Writing shares=%lu, %lu, %lu\n", k.p.size_I, k.p.size_F, k.p.size_O);
+    printf("Writing shares=%lu, %lu, %lu\n", k.p.size_I, k.p.size_F, k.p.size_O);
     writeShares<T, T>(key_as_bytes, party, k.p.size_I, d_mask_I, k.p.bout);
+    printf("Done writing shares1\n");
     writeShares<T, T>(key_as_bytes, party, k.p.size_F, d_mask_F, k.p.bout);
+    printf("Done writing shares2\n");
     writeShares<T, T>(key_as_bytes, party, k.p.size_O, d_masked_C, k.p.bout);
-    // printf("Done writing shares\n");
+    printf("Done writing shares\n");
     if (mask_I_was_null)
         gpuFree(d_mask_I);
     gpuFree(d_mask_F);
     gpuFree(d_masked_C);
-    // printf("Returning mask\n");
+    printf("Returning mask\n");
     return d_mask_C;
 }
